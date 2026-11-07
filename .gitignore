@@ -1,0 +1,25 @@
+# 构建产物
+firmware/build/
+firmware/ChibiOS/
+*.o
+*.map
+
+# 安卓
+android/build/
+*.jks
+*.keystore
+
+# 桌面端
+*.exe
+desktop/**/build/
+desktop/**/*.spec
+__pycache__/
+*.pyc
+*.bak
+*.log
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

@@ -1,0 +1,1666 @@
+--- a/QtTinySA.py
++++ b/QtTinySA.py
+@@ -57,7 +57,15 @@
+ # force Qt to use OpenGL rather than DirectX for Windows OS
+ # QtCore.QCoreApplication.setAttribute(QtCore.Qt.ApplicationAttribute.AA_UseDesktopOpenGL)
+ 
+-logging.basicConfig(format="%(message)s", level=logging.INFO)
++_logfile = os.path.join(platformdirs.user_config_dir(appname="QtTinySA", appauthor=False), "QtTinySA.log")
++try:
++    os.makedirs(os.path.dirname(_logfile), exist_ok=True)
++    logging.basicConfig(format="%(message)s", level=logging.INFO,
++                        handlers=[logging.StreamHandler(),
++                                  logging.FileHandler(_logfile, mode="w", encoding="utf-8")])
++except Exception:
++    logging.basicConfig(format="%(message)s", level=logging.INFO)
++logging.info(f'log file: {_logfile}')
+ threadpool = QtCore.QThreadPool()
+ basedir = os.path.dirname(__file__)
+ 
+@@ -543,8 +551,8 @@
+                 # update the spectrum trace, according to trace type
+                 gui_boxes = {0: QtTSA.t1_type, 1: QtTSA.t2_type, 2: QtTSA.t3_type, 3: QtTSA.t4_type}
+                 trace_type = gui_boxes.get(self.spectra.index(spectrum)).currentText()
+-                data = {'Normal': levl, 'Average': avg, 'Max': maxl, 'Min': minl, 'Freeze': levl}
+-                if trace_type != 'Freeze':
++                data = {'常规': levl, '平均': avg, '最大': maxl, '最小': minl, '冻结': levl}
++                if trace_type != '冻结':
+                     spectrum.updateTrace(freq, data.get(trace_type))
+                 logging.debug(f'updating {self.spectra.index(spectrum)}')
+                 if timestamp != 0:
+@@ -847,7 +855,7 @@
+         dialog = QFileDialog()
+         folder = settings.ui.save_folder.text()
+         dialog.setDirectory(folder)
+-        file_name = dialog.getOpenFileName(caption="Select file to load", filter="NumPy array (*.npy)")[0]
++        file_name = dialog.getOpenFileName(caption="选择要加载的文件", filter="NumPy 数组 (*.npy)")[0]
+         if file_name == '':
+             return
+         if usbInstr.loaded_files == 4:
+@@ -1050,14 +1058,14 @@
+ 
+     def exportData(self, filename=''):
+         if filename == '':
+-            filename = QFileDialog.getSaveFileName(caption="Save As", filter="Comma Separated Values (*.csv)")[0]
++            filename = QFileDialog.getSaveFileName(caption="另存为", filter="逗号分隔值 (*.csv)")[0]
+         logging.info(f'exporting data to {filename}')
+         if filename != '':
+             self.writeCSV(filename)
+           
+     def importData(self, filename=''):
+         if filename == '':
+-            filename = QFileDialog.getOpenFileName(caption="Open File", filter="Comma Separated Values (*.csv)")[0]
++            filename = QFileDialog.getOpenFileName(caption="打开文件", filter="逗号分隔值 (*.csv)")[0]
+         logging.info(f'importing data from {filename}')
+         if filename != '':
+             self.readCSV(filename)
+@@ -1260,7 +1268,7 @@
+ 
+ def set_sd_file_save(single=True):
+     device = tinySA.dev_ref[filebrowse.ui.device.currentIndex()]
+-    folder = QFileDialog.getExistingDirectory(caption="Select folder to save SD card files")
++    folder = QFileDialog.getExistingDirectory(caption="选择保存 SD 卡文件的文件夹")
+     if single:
+         file_name = filebrowse.ui.listWidget.currentItem().text()  # the file selected in the list widget
+     else:
+--- a/modules/bands.ui
++++ b/modules/bands.ui
+@@ -11,7 +11,7 @@
+    </rect>
+   </property>
+   <property name="windowTitle">
+-   <string>Preset Frequencies</string>
++   <string>预设频率</string>
+   </property>
+   <widget class="QWidget" name="layoutWidget">
+    <property name="geometry">
+@@ -45,7 +45,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Delete Preset</string>
++       <string>删除预设</string>
+       </property>
+      </widget>
+     </item>
+@@ -66,7 +66,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Delete Preset Type</string>
++       <string>删除预设类型</string>
+       </property>
+      </widget>
+     </item>
+@@ -87,7 +87,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Export Presets</string>
++       <string>导出预设</string>
+       </property>
+      </widget>
+     </item>
+@@ -108,7 +108,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Add Preset</string>
++       <string>添加预设</string>
+       </property>
+      </widget>
+     </item>
+@@ -165,7 +165,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Import Presets</string>
++       <string>导入预设</string>
+       </property>
+      </widget>
+     </item>
+@@ -183,10 +183,10 @@
+        </font>
+       </property>
+       <property name="toolTip">
+-       <string>Delete all entries filtered by Preset Type table</string>
+-      </property>
+-      <property name="text">
+-       <string>Delete All Listed</string>
++       <string>按预设类型表删除全部条目</string>
++      </property>
++      <property name="text">
++       <string>删除全部列出项</string>
+       </property>
+      </widget>
+     </item>
+@@ -216,7 +216,7 @@
+        <enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum>
+       </property>
+       <property name="suffix">
+-       <string> listed</string>
++       <string>列出</string>
+       </property>
+       <property name="maximum">
+        <number>9999</number>
+@@ -232,7 +232,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Preset frequencies, bands and fixed markers</string>
++       <string>预设频率、频段与固定标记</string>
+       </property>
+      </widget>
+     </item>
+@@ -253,7 +253,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Add Preset Type</string>
++       <string>添加预设类型</string>
+       </property>
+      </widget>
+     </item>
+@@ -271,7 +271,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Clear Filter</string>
++       <string>清除筛选</string>
+       </property>
+      </widget>
+     </item>
+@@ -284,7 +284,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Preset Types</string>
++       <string>预设类型</string>
+       </property>
+      </widget>
+     </item>
+--- a/modules/devices.py
++++ b/modules/devices.py
+@@ -8,6 +8,7 @@
+ # SPDX-License-Identifier: GPL-3.0-or-later
+ 
+ import os
++import re
+ import logging
+ import serial
+ import time
+@@ -79,6 +80,21 @@
+         if system() == 'Linux' or system() == 'Darwin':
+             return port.product
+         else:
++            # Windows 无法从端口描述区分机型, 这里主动问一次版本号
++            # Ultra 的版本串以 tinySA4 开头, Basic 为 tinySA 开头
++            try:
++                with serial.Serial(port.device, 115200, timeout=0.4, write_timeout=1) as s:
++                    time.sleep(0.15)
++                    s.reset_input_buffer()
++                    s.write(b'version\r')
++                    time.sleep(0.45)
++                    r = s.read(1024).decode('utf-8', 'replace')
++                if 'tinySA4' in r:
++                    return 'tinySA4'
++                if 'tinySA' in r:
++                    return 'tinySA'
++            except Exception as e:
++                logging.debug(f'identify probe failed on {port.device}: {e}')
+             return 'tinySA4'
+ 
+     def connect(self):
+@@ -282,7 +298,14 @@
+                 logging.debug(f'Tiny {self.id} test {i} version = {version}')
+                 if version is not None:
+                     firmware = str.splitlines(version)
+-                    self.firmware = firmware[0].split('_')[-1]
++                    _tok = firmware[0].split('_')[-1]
++                    if not re.search(r'\d', _tok):
++                        # 版本串不是标准格式时(如 tinySA_BH6EMP_V0.1_CH),
++                        # 从中提取 x.y 及可选后缀, 输出形如 0.1-CH
++                        _m = re.search(r'[Vv]?(\d+\.\d+)(?:_(\w+))?', firmware[0])
++                        if _m:
++                            _tok = _m.group(1) + (('-' + _m.group(2)) if _m.group(2) else '')
++                    self.firmware = _tok
+                     logging.debug(f'{usbPort} test {i} reports {self.firmware}')
+                     break
+                 else:
+@@ -333,10 +356,18 @@
+ 
+     def measurement(self, startF, stopF, points, rbw, depth, maxF, interval, split, loop=True):  # run in separate thread
+         if self.basic:
+-            rbw = np.clip(rbw, 3, 600)
++            # rbw 可能是字符串 'auto'(交给设备自己决定), 只对数值做裁剪
++            if not isinstance(rbw, str):
++                rbw = float(np.clip(float(rbw), 3, 600))
+             maxF = min(960000000, maxF)
+             startF = np.clip(startF, 100000, maxF)
+             stopF = np.clip(stopF, 100000, maxF)
++            # Basic(POINTS_COUNT=290) 的 scanraw 不做点数检查,
++            # 请求超过 290 点会让固件写越界并死机
++            points = int(np.clip(points, 20, 290))
++            # Basic 固件的 scanraw 每次只扫一遍, 不支持自动重复,
++            # 必须每扫一次重发一次命令, 否则数据会错位(display out of sync)
++            loop = False
+         else:
+             startF = np.clip(startF, 100000, maxF)
+             stopF = np.clip(stopF, 100000, maxF)
+--- a/modules/fading.ui
++++ b/modules/fading.ui
+@@ -11,7 +11,7 @@
+    </rect>
+   </property>
+   <property name="windowTitle">
+-   <string>Signal level over Time</string>
++   <string>信号电平随时间变化</string>
+   </property>
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
+@@ -78,7 +78,7 @@
+         </font>
+        </property>
+        <property name="text">
+-        <string>Memory Size</string>
++        <string>内存大小</string>
+        </property>
+       </widget>
+      </item>
+--- a/modules/filebrowse.ui
++++ b/modules/filebrowse.ui
+@@ -11,7 +11,7 @@
+    </rect>
+   </property>
+   <property name="windowTitle">
+-   <string>File List</string>
++   <string>文件列表</string>
+   </property>
+   <layout class="QGridLayout" name="gridLayout_3">
+    <item row="0" column="0">
+@@ -36,7 +36,7 @@
+         </font>
+        </property>
+        <property name="text">
+-        <string>Save selected</string>
++        <string>保存选中</string>
+        </property>
+       </widget>
+      </item>
+@@ -75,7 +75,7 @@
+         </font>
+        </property>
+        <property name="text">
+-        <string>Save all files</string>
++        <string>保存全部文件</string>
+        </property>
+       </widget>
+      </item>
+@@ -93,7 +93,7 @@
+         </font>
+        </property>
+        <property name="text">
+-        <string>Ask for folder location each time</string>
++        <string>每次询问文件夹位置</string>
+        </property>
+        <property name="checked">
+         <bool>false</bool>
+@@ -114,7 +114,7 @@
+         </font>
+        </property>
+        <property name="toolTip">
+-        <string>Choose device to browse</string>
++        <string>选择要浏览的设备</string>
+        </property>
+       </widget>
+      </item>
+--- a/modules/graphs.py
++++ b/modules/graphs.py
+@@ -398,7 +398,7 @@
+ 
+     def mkr_start(self, startF):  # set marker to the sweep start frequency
+         for mkr in self.mkr_list:
+-            if mkr.mkr_type != 'Off':
++            if mkr.mkr_type != '关闭':
+                 mkr.line.setValue(startF * 1e6)
+                 mkr.mkr_type()
+ 
+@@ -524,7 +524,7 @@
+     def set_type(self, m_type, m_track):
+         self.mkr_type = m_type
+         self.level = m_track
+-        if self.mkr_type == 'Off':
++        if self.mkr_type == '关闭':
+             self.line.hide()
+             self.delta.hide()
+             self.delta.setValue(0)
+@@ -546,7 +546,7 @@
+         if frequencies[0] == frequencies[-1]:  # markers are not relevant in zero span
+             return
+ 
+-        if self.mkr_type == 'Off' or not trace_on:
++        if self.mkr_type == '关闭' or not trace_on:
+             self.line.hide()
+             self.delta.hide()
+             self.markerBox.setVisible(False)
+@@ -555,15 +555,15 @@
+             self.line.show()
+             self.markerBox.setVisible(True)
+ 
+-        if self.mkr_type in ('Max', 'Min'):
++        if self.mkr_type in ('最大', '最小'):
+             maxmin = Calc.maxMin(frequencies, levels, limits)
+             # maxmin is a tuple of lists where [0, x] are indices in the frequency array of the max
+             # and [1, x] are min.  maskFreq represents an exclusion zone around the mkr, based on rbw
+-            if self.mkr_type == 'Max':
++            if self.mkr_type == '最大':
+                 self.line.setValue(maxmin[0][self.level - 1])
+                 if self.delta.value() != 0:
+                     self.delta.setValue(maxmin[0][self.level - 1] + self.deltaF)  # needs to be index delta not F
+-            if self.mkr_type == 'Min':
++            if self.mkr_type == '最小':
+                 self.line.setValue(maxmin[1][self.level - 1])
+                 if self.delta.value() != 0:
+                     self.delta.setValue(maxmin[1][self.level - 1] + self.deltaF)  # needs to be index delta not F
+--- a/modules/offset.ui
++++ b/modules/offset.ui
+@@ -11,7 +11,7 @@
+    </rect>
+   </property>
+   <property name="windowTitle">
+-   <string>Correction</string>
++   <string>校准</string>
+   </property>
+   <layout class="QGridLayout" name="gridLayout_2">
+    <item row="0" column="0">
+@@ -30,7 +30,7 @@
+         </font>
+        </property>
+        <property name="text">
+-        <string>Import</string>
++        <string>导入</string>
+        </property>
+       </widget>
+      </item>
+@@ -48,7 +48,7 @@
+         </font>
+        </property>
+        <property name="text">
+-        <string>Upload to tinySA</string>
++        <string>上传到 tinySA</string>
+        </property>
+       </widget>
+      </item>
+@@ -87,10 +87,10 @@
+         </font>
+        </property>
+        <property name="toolTip">
+-        <string>Save tables to config database</string>
+-       </property>
+-       <property name="text">
+-        <string>Save on read</string>
++        <string>保存表格到配置数据库</string>
++       </property>
++       <property name="text">
++        <string>读取时保存</string>
+        </property>
+       </widget>
+      </item>
+@@ -103,7 +103,7 @@
+         </font>
+        </property>
+        <property name="text">
+-        <string>Correction tables in the config database</string>
++        <string>配置数据库中的校准表</string>
+        </property>
+       </widget>
+      </item>
+@@ -145,7 +145,7 @@
+         </font>
+        </property>
+        <property name="toolTip">
+-        <string>Correction mode</string>
++        <string>校准模式</string>
+        </property>
+       </widget>
+      </item>
+@@ -181,10 +181,10 @@
+         </font>
+        </property>
+        <property name="toolTip">
+-        <string>Filter by correction mode</string>
+-       </property>
+-       <property name="text">
+-        <string>Apply Filter</string>
++        <string>按校准模式筛选</string>
++       </property>
++       <property name="text">
++        <string>应用筛选</string>
+        </property>
+        <property name="checked">
+         <bool>false</bool>
+@@ -205,7 +205,7 @@
+         </font>
+        </property>
+        <property name="text">
+-        <string>Export</string>
++        <string>导出</string>
+        </property>
+       </widget>
+      </item>
+@@ -223,10 +223,10 @@
+         </font>
+        </property>
+        <property name="toolTip">
+-        <string>Read tables from tinySA</string>
+-       </property>
+-       <property name="text">
+-        <string>Read</string>
++        <string>从 tinySA 读取表格</string>
++       </property>
++       <property name="text">
++        <string>读取</string>
+        </property>
+       </widget>
+      </item>
+@@ -254,7 +254,7 @@
+         </font>
+        </property>
+        <property name="text">
+-        <string>Correction tables of connected tinySA </string>
++        <string>已连接 tinySA 的校准表</string>
+        </property>
+       </widget>
+      </item>
+--- a/modules/pattern.ui
++++ b/modules/pattern.ui
+@@ -11,7 +11,7 @@
+    </rect>
+   </property>
+   <property name="windowTitle">
+-   <string>Antenna pattern</string>
++   <string>天线方向图</string>
+   </property>
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
+@@ -24,7 +24,7 @@
+         </font>
+        </property>
+        <property name="toolTip">
+-        <string>Approx signal pointing directly at source (-53dBm = S9+40dB)</string>
++        <string>信号大致正对源 (-53dBm = S9+40dB)</string>
+        </property>
+        <property name="suffix">
+         <string>dBm</string>
+@@ -60,7 +60,7 @@
+         </font>
+        </property>
+        <property name="toolTip">
+-        <string>Start point, not a bearing from North</string>
++        <string>起点，非相对正北的方位</string>
+        </property>
+        <property name="suffix">
+         <string>°</string>
+@@ -81,10 +81,10 @@
+         </font>
+        </property>
+        <property name="toolTip">
+-        <string>Plot a full circle when measure is pressed</string>
+-       </property>
+-       <property name="text">
+-        <string>Auto</string>
++        <string>测量时绘制整圆</string>
++       </property>
++       <property name="text">
++        <string>自动</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+@@ -102,10 +102,10 @@
+         </font>
+        </property>
+        <property name="toolTip">
+-        <string>Scotty</string>
+-       </property>
+-       <property name="text">
+-        <string>Beam up</string>
++        <string>斯科蒂</string>
++       </property>
++       <property name="text">
++        <string>波束抬起</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+@@ -120,10 +120,10 @@
+         </font>
+        </property>
+        <property name="toolTip">
+-        <string>Plot the value for the set heading when measure is pressed</string>
+-       </property>
+-       <property name="text">
+-        <string>Man</string>
++        <string>测量时绘制设定航向的值</string>
++       </property>
++       <property name="text">
++        <string>手动</string>
+        </property>
+        <property name="checked">
+         <bool>false</bool>
+@@ -141,10 +141,10 @@
+         </font>
+        </property>
+        <property name="toolTip">
+-        <string>Start auto or manual measurement</string>
+-       </property>
+-       <property name="text">
+-        <string>Measure</string>
++        <string>开始自动或手动测量</string>
++       </property>
++       <property name="text">
++        <string>测量</string>
+        </property>
+        <property name="checkable">
+         <bool>false</bool>
+@@ -159,7 +159,7 @@
+         </font>
+        </property>
+        <property name="text">
+-        <string>0dB reference</string>
++        <string>0dB 参考</string>
+        </property>
+       </widget>
+      </item>
+@@ -171,7 +171,7 @@
+         </font>
+        </property>
+        <property name="text">
+-        <string>Measure heading</string>
++        <string>测量航向</string>
+        </property>
+       </widget>
+      </item>
+@@ -222,10 +222,10 @@
+         </font>
+        </property>
+        <property name="toolTip">
+-        <string>Clockwise or Anticlockwise</string>
+-       </property>
+-       <property name="text">
+-        <string>↻ clockwise in</string>
++        <string>顺时针或逆时针</string>
++       </property>
++       <property name="text">
++        <string>↻ 顺时针</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+@@ -240,7 +240,7 @@
+         </font>
+        </property>
+        <property name="toolTip">
+-        <string>Time to rotate 360 deg</string>
++        <string>旋转 360° 时间</string>
+        </property>
+        <property name="specialValueText">
+         <string/>
+--- a/modules/phasenoise.ui
++++ b/modules/phasenoise.ui
+@@ -11,7 +11,7 @@
+    </rect>
+   </property>
+   <property name="windowTitle">
+-   <string>Phase Noise</string>
++   <string>相位噪声</string>
+   </property>
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
+@@ -47,7 +47,7 @@
+         </font>
+        </property>
+        <property name="text">
+-        <string>Centre</string>
++        <string>中心</string>
+        </property>
+       </widget>
+      </item>
+--- a/modules/settings.ui
++++ b/modules/settings.ui
+@@ -11,7 +11,7 @@
+    </rect>
+   </property>
+   <property name="windowTitle">
+-   <string>Settings</string>
++   <string>设置</string>
+   </property>
+   <widget class="QWidget" name="layoutWidget">
+    <property name="geometry">
+@@ -42,7 +42,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Set Folder</string>
++       <string>设置文件夹</string>
+       </property>
+      </widget>
+     </item>
+@@ -54,7 +54,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Display update interval</string>
++       <string>显示刷新间隔</string>
+       </property>
+      </widget>
+     </item>
+@@ -66,7 +66,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Max/Min marker threshold</string>
++       <string>最大/最小标记阈值</string>
+       </property>
+      </widget>
+     </item>
+@@ -78,7 +78,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Set text Bold (re-start needed)</string>
++       <string>文字加粗（需重启）</string>
+       </property>
+      </widget>
+     </item>
+@@ -108,7 +108,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Maximum number of sweeps per file (max waterfall depth)</string>
++       <string>每文件最大扫描数（瀑布图最大深度）</string>
+       </property>
+      </widget>
+     </item>
+@@ -126,10 +126,10 @@
+        </font>
+       </property>
+       <property name="toolTip">
+-       <string>Must be selected each time programme is run</string>
+-      </property>
+-      <property name="text">
+-       <string> Yes</string>
++       <string>每次启动程序都必须勾选</string>
++      </property>
++      <property name="text">
++       <string>是</string>
+       </property>
+      </widget>
+     </item>
+@@ -192,7 +192,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Absolute maximum</string>
++       <string>绝对最大值</string>
+       </property>
+      </widget>
+     </item>
+@@ -204,7 +204,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Auto minimum points</string>
++       <string>自动最小点数</string>
+       </property>
+      </widget>
+     </item>
+@@ -228,7 +228,7 @@
+        </font>
+       </property>
+       <property name="toolTip">
+-       <string>Maximum Frequency allowed.  Note: TinySA-Ultra is not calibrated above 6GHz </string>
++       <string>允许的最大频率。注意：Ultra 在 6GHz 以上未校准</string>
+       </property>
+       <property name="suffix">
+        <string>MHz</string>
+@@ -261,7 +261,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string> Yes</string>
++       <string>是</string>
+       </property>
+      </widget>
+     </item>
+@@ -273,7 +273,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string> Yes</string>
++       <string>是</string>
+       </property>
+      </widget>
+     </item>
+@@ -285,7 +285,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Start scanning at startup (auto run)</string>
++       <string>启动时自动开始扫描</string>
+       </property>
+      </widget>
+     </item>
+@@ -342,7 +342,7 @@
+        </font>
+       </property>
+       <property name="toolTip">
+-       <string>Nominal</string>
++       <string>标称</string>
+       </property>
+       <property name="suffix">
+        <string>mS</string>
+@@ -388,7 +388,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Scan Settings</string>
++       <string>扫描设置</string>
+       </property>
+      </widget>
+     </item>
+@@ -469,7 +469,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Auto maximum points</string>
++       <string>自动最大点数</string>
+       </property>
+      </widget>
+     </item>
+@@ -482,7 +482,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Miscellaneous</string>
++       <string>其它</string>
+       </property>
+      </widget>
+     </item>
+@@ -510,7 +510,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string> Yes</string>
++       <string>是</string>
+       </property>
+      </widget>
+     </item>
+@@ -574,14 +574,14 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>GUI</string>
++       <string>界面</string>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="0">
+      <widget class="QLabel" name="label_22">
+       <property name="text">
+-       <string>Set Band not Freq at startup</string>
++       <string>启动时设置频段而非频率</string>
+       </property>
+      </widget>
+     </item>
+@@ -593,7 +593,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Max for best accuracy</string>
++       <string>最大（最高精度）</string>
+       </property>
+      </widget>
+     </item>
+@@ -605,7 +605,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Points / Resolution Bandwidth</string>
++       <string>点数 / 分辨率带宽</string>
+       </property>
+      </widget>
+     </item>
+@@ -617,7 +617,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Sync Date and Time from PC</string>
++       <string>从电脑同步日期时间</string>
+       </property>
+      </widget>
+     </item>
+@@ -629,7 +629,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Maximum operating frequency</string>
++       <string>最高工作频率</string>
+       </property>
+      </widget>
+     </item>
+@@ -663,7 +663,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Saving sweep data</string>
++       <string>保存扫描数据</string>
+       </property>
+      </widget>
+     </item>
+@@ -675,7 +675,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Double-click in colour box to set trace colour</string>
++       <string>双击颜色框设置迹线颜色</string>
+       </property>
+      </widget>
+     </item>
+@@ -688,7 +688,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Signal Level Reminder lines</string>
++       <string>信号电平参考线</string>
+       </property>
+      </widget>
+     </item>
+@@ -700,7 +700,7 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Max with auto attenuator</string>
++       <string>自动衰减时的最大值</string>
+       </property>
+      </widget>
+     </item>
+@@ -733,14 +733,14 @@
+        </font>
+       </property>
+       <property name="text">
+-       <string>Save scans to CSV file (NOTE: playback will create files)</string>
++       <string>保存扫描到 CSV 文件（注意：回放会创建文件）</string>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="1">
+      <widget class="QCheckBox" name="restore_band">
+       <property name="text">
+-       <string>Yes</string>
++       <string>是</string>
+       </property>
+       <property name="checked">
+        <bool>false</bool>
+--- a/modules/spectrum.ui
++++ b/modules/spectrum.ui
+@@ -71,7 +71,7 @@
+           </font>
+          </property>
+          <property name="text">
+-          <string>Devices</string>
++          <string>设备</string>
+          </property>
+         </widget>
+        </item>
+@@ -89,7 +89,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Use device</string>
++          <string>使用设备</string>
+          </property>
+          <property name="text">
+           <string/>
+@@ -113,7 +113,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Use device</string>
++          <string>使用设备</string>
+          </property>
+          <property name="text">
+           <string/>
+@@ -137,7 +137,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Use device</string>
++          <string>使用设备</string>
+          </property>
+          <property name="text">
+           <string/>
+@@ -161,7 +161,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Use device</string>
++          <string>使用设备</string>
+          </property>
+          <property name="text">
+           <string/>
+@@ -185,10 +185,10 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Split scan across enabled devices</string>
+-         </property>
+-         <property name="text">
+-          <string>Split scan</string>
++          <string>在已启用设备间拆分扫描</string>
++         </property>
++         <property name="text">
++          <string>拆分扫描</string>
+          </property>
+         </widget>
+        </item>
+@@ -207,7 +207,7 @@
+           </font>
+          </property>
+          <property name="text">
+-          <string>Input</string>
++          <string>输入</string>
+          </property>
+         </widget>
+        </item>
+@@ -240,7 +240,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Set attenuator</string>
++          <string>设置衰减</string>
+          </property>
+          <property name="readOnly">
+           <bool>false</bool>
+@@ -249,7 +249,7 @@
+           <string>dB</string>
+          </property>
+          <property name="prefix">
+-          <string>Atten </string>
++          <string>衰减</string>
+          </property>
+          <property name="minimum">
+           <number>0</number>
+@@ -276,10 +276,10 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Enable auto attenuator</string>
+-         </property>
+-         <property name="text">
+-          <string> Auto Atten</string>
++          <string>启用自动衰减</string>
++         </property>
++         <property name="text">
++          <string>自动衰减</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+@@ -300,13 +300,13 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Enable Low Noise Amplifier</string>
++          <string>启用低噪声放大器</string>
+          </property>
+          <property name="layoutDirection">
+           <enum>Qt::LayoutDirection::LeftToRight</enum>
+          </property>
+          <property name="text">
+-          <string>LNA</string>
++          <string>低噪放</string>
+          </property>
+         </widget>
+        </item>
+@@ -325,7 +325,7 @@
+           </font>
+          </property>
+          <property name="text">
+-          <string>Spur removal</string>
++          <string>杂散消除</string>
+          </property>
+         </widget>
+        </item>
+@@ -374,7 +374,7 @@
+           </font>
+          </property>
+          <property name="text">
+-          <string>RBW kHz</string>
++          <string>分辨率带宽 kHz</string>
+          </property>
+         </widget>
+        </item>
+@@ -407,7 +407,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Set resolution bandwidth in kHz</string>
++          <string>以 kHz 设置分辨率带宽</string>
+          </property>
+          <property name="editable">
+           <bool>false</bool>
+@@ -428,10 +428,10 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Auto Resolution Bandwidth</string>
+-         </property>
+-         <property name="text">
+-          <string>Auto RBW</string>
++          <string>自动分辨率带宽</string>
++         </property>
++         <property name="text">
++          <string>自动带宽</string>
+          </property>
+         </widget>
+        </item>
+@@ -450,7 +450,7 @@
+           </font>
+          </property>
+          <property name="text">
+-          <string>Frequency Points</string>
++          <string>频率点数</string>
+          </property>
+         </widget>
+        </item>
+@@ -480,7 +480,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Set the number of frequency Points to measure</string>
++          <string>设置要测量的频率点数</string>
+          </property>
+          <property name="suffix">
+           <string/>
+@@ -519,10 +519,10 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Auto points to suit RBW</string>
+-         </property>
+-         <property name="text">
+-          <string>Auto Points</string>
++          <string>按带宽自动选点</string>
++         </property>
++         <property name="text">
++          <string>自动点数</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+@@ -555,7 +555,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Set the number of repeat measurements at each frequency point</string>
++          <string>设置每个频率点的重复测量次数</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+@@ -564,7 +564,7 @@
+           <string/>
+          </property>
+          <property name="prefix">
+-          <string>Repeat </string>
++          <string>重复</string>
+          </property>
+          <property name="minimum">
+           <number>1</number>
+@@ -642,7 +642,7 @@
+           <number>0</number>
+          </property>
+          <property name="text">
+-          <string>LNB</string>
++          <string>低噪块</string>
+          </property>
+          <property name="scaledContents">
+           <bool>false</bool>
+@@ -681,7 +681,7 @@
+           <string/>
+          </property>
+          <property name="text">
+-          <string>Start scan</string>
++          <string>开始扫描</string>
+          </property>
+          <property name="iconSize">
+           <size>
+@@ -744,13 +744,13 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Waterfall/3D Time axis depth</string>
++          <string>瀑布图/3D 时间轴深度</string>
+          </property>
+          <property name="suffix">
+           <string/>
+          </property>
+          <property name="prefix">
+-          <string>Scans </string>
++          <string>扫描</string>
+          </property>
+          <property name="minimum">
+           <number>1</number>
+@@ -778,7 +778,7 @@
+           </font>
+          </property>
+          <property name="text">
+-          <string> Traces</string>
++          <string>迹线</string>
+          </property>
+         </widget>
+        </item>
+@@ -797,7 +797,7 @@
+           </font>
+          </property>
+          <property name="text">
+-          <string>Waterfall</string>
++          <string>瀑布图</string>
+          </property>
+         </widget>
+        </item>
+@@ -810,7 +810,7 @@
+           </font>
+          </property>
+          <property name="text">
+-          <string>Record / Play</string>
++          <string>录制 / 回放</string>
+          </property>
+         </widget>
+        </item>
+@@ -825,7 +825,7 @@
+           <string/>
+          </property>
+          <property name="prefix">
+-          <string>Size </string>
++          <string>大小</string>
+          </property>
+          <property name="maximum">
+           <number>9</number>
+@@ -855,7 +855,7 @@
+           <bool>false</bool>
+          </property>
+          <property name="toolTip">
+-          <string>Trace 1 on</string>
++          <string>迹线 1</string>
+          </property>
+          <property name="text">
+           <string/>
+@@ -894,7 +894,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Trace type</string>
++          <string>迹线类型</string>
+          </property>
+          <property name="modelColumn">
+           <number>0</number>
+@@ -930,7 +930,7 @@
+           </font>
+          </property>
+          <property name="text">
+-          <string>Auto range</string>
++          <string>自动量程</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+@@ -957,7 +957,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Stop recording or playing</string>
++          <string>停止录制或回放</string>
+          </property>
+          <property name="text">
+           <string>...</string>
+@@ -999,7 +999,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Trace type</string>
++          <string>迹线类型</string>
+          </property>
+         </widget>
+        </item>
+@@ -1053,10 +1053,10 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Trace averaging</string>
++          <string>迹线平均</string>
+          </property>
+          <property name="prefix">
+-          <string>Average </string>
++          <string>平均</string>
+          </property>
+          <property name="minimum">
+           <number>1</number>
+@@ -1083,7 +1083,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Trace 3 on</string>
++          <string>迹线 3</string>
+          </property>
+          <property name="text">
+           <string/>
+@@ -1116,7 +1116,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Trace type</string>
++          <string>迹线类型</string>
+          </property>
+         </widget>
+        </item>
+@@ -1146,7 +1146,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Trace type</string>
++          <string>迹线类型</string>
+          </property>
+         </widget>
+        </item>
+@@ -1170,7 +1170,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Play recording</string>
++          <string>回放录制</string>
+          </property>
+          <property name="text">
+           <string>...</string>
+@@ -1203,7 +1203,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Trace 2 on</string>
++          <string>迹线 2</string>
+          </property>
+          <property name="text">
+           <string/>
+@@ -1233,7 +1233,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Clear loaded files</string>
++          <string>清除已加载文件</string>
+          </property>
+          <property name="text">
+           <string>...</string>
+@@ -1269,8 +1269,8 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Waterfall Sensitivity
+-and Colours</string>
++          <string>瀑布图灵敏度
++与配色</string>
+          </property>
+         </widget>
+        </item>
+@@ -1294,7 +1294,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Start recording</string>
++          <string>开始录制</string>
+          </property>
+          <property name="text">
+           <string>...</string>
+@@ -1324,7 +1324,7 @@
+           <string>%</string>
+          </property>
+          <property name="prefix">
+-          <string>Speed </string>
++          <string>速度</string>
+          </property>
+          <property name="minimum">
+           <number>10</number>
+@@ -1357,7 +1357,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Trace 4 on</string>
++          <string>迹线 4</string>
+          </property>
+          <property name="text">
+           <string/>
+@@ -1414,7 +1414,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Sweep Start</string>
++          <string>扫描起点</string>
+          </property>
+          <property name="frame">
+           <bool>true</bool>
+@@ -1468,7 +1468,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Sweep Centre</string>
++          <string>扫描中心</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+@@ -1522,7 +1522,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Sweep Stop</string>
++          <string>扫描终点</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+@@ -1576,7 +1576,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Set Scan to Graph</string>
++          <string>将扫描设为图形</string>
+          </property>
+          <property name="text">
+           <string>&lt;&gt;</string>
+@@ -1639,7 +1639,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Marker 1 type</string>
++          <string>标记 1 类型</string>
+          </property>
+          <property name="sizeAdjustPolicy">
+           <enum>QComboBox::SizeAdjustPolicy::AdjustToContentsOnFirstShow</enum>
+@@ -1666,7 +1666,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Marker 2 type</string>
++          <string>标记 2 类型</string>
+          </property>
+          <property name="sizeAdjustPolicy">
+           <enum>QComboBox::SizeAdjustPolicy::AdjustToContentsOnFirstShow</enum>
+@@ -1705,7 +1705,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Marker 3 type</string>
++          <string>标记 3 类型</string>
+          </property>
+         </widget>
+        </item>
+@@ -1729,7 +1729,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Marker 4 type</string>
++          <string>标记 4 类型</string>
+          </property>
+         </widget>
+        </item>
+@@ -1755,7 +1755,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Show preset markers &amp; bands</string>
++          <string>显示预设标记与频段</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color: rgb(0, 170, 0);</string>
+@@ -1791,7 +1791,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Add fixed freq mkr from mkr1</string>
++          <string>由标记1添加固定频率标记</string>
+          </property>
+          <property name="text">
+           <string>+</string>
+@@ -1818,7 +1818,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Filter preset list</string>
++          <string>筛选预设列表</string>
+          </property>
+          <property name="editable">
+           <bool>false</bool>
+@@ -1848,7 +1848,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Sweep Span</string>
++          <string>扫描跨度</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+@@ -1899,7 +1899,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Preset Frequency list&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
++          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;预设频率列表&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="editable">
+           <bool>false</bool>
+@@ -1935,7 +1935,7 @@
+           <enum>Qt::FocusPolicy::TabFocus</enum>
+          </property>
+          <property name="toolTip">
+-          <string> Set Centre freq as mkr1</string>
++          <string>将中心频率设为标记1</string>
+          </property>
+          <property name="text">
+           <string>&gt;|&lt;</string>
+@@ -1995,7 +1995,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Tracking level</string>
++          <string>跟踪电平</string>
+          </property>
+          <property name="layoutDirection">
+           <enum>Qt::LayoutDirection::RightToLeft</enum>
+@@ -2040,7 +2040,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Tracking level</string>
++          <string>跟踪电平</string>
+          </property>
+          <property name="layoutDirection">
+           <enum>Qt::LayoutDirection::RightToLeft</enum>
+@@ -2076,7 +2076,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Tracking level</string>
++          <string>跟踪电平</string>
+          </property>
+          <property name="layoutDirection">
+           <enum>Qt::LayoutDirection::RightToLeft</enum>
+@@ -2112,7 +2112,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Tracking level</string>
++          <string>跟踪电平</string>
+          </property>
+          <property name="layoutDirection">
+           <enum>Qt::LayoutDirection::RightToLeft</enum>
+@@ -2148,7 +2148,7 @@
+           </font>
+          </property>
+          <property name="toolTip">
+-          <string>Rotate marker label</string>
++          <string>旋转标记标签</string>
+          </property>
+          <property name="text">
+           <string>↻</string>
+@@ -2295,14 +2295,14 @@
+    </property>
+    <widget class="QMenu" name="menu_Help">
+     <property name="title">
+-     <string>&amp;Help</string>
++     <string>&amp;帮助</string>
+     </property>
+     <addaction name="actionAbout_QtTinySA"/>
+     <addaction name="actionAbout_Qt"/>
+    </widget>
+    <widget class="QMenu" name="menuSettings">
+     <property name="title">
+-     <string>&amp;Settings</string>
++     <string>&amp;设置</string>
+     </property>
+     <addaction name="actionSettings"/>
+     <addaction name="actionPresets"/>
+@@ -2310,7 +2310,7 @@
+    </widget>
+    <widget class="QMenu" name="menuMeasurements">
+     <property name="title">
+-     <string>Measurements</string>
++     <string>测量</string>
+     </property>
+     <addaction name="actionPhNoise"/>
+     <addaction name="actionFading"/>
+@@ -2318,7 +2318,7 @@
+    </widget>
+    <widget class="QMenu" name="menuFile">
+     <property name="title">
+-     <string>File</string>
++     <string>文件</string>
+     </property>
+     <addaction name="actionBrowse"/>
+     <addaction name="actionRecordings"/>
+@@ -2332,32 +2332,32 @@
+   <widget class="QStatusBar" name="statusbar"/>
+   <action name="actionsetting">
+    <property name="text">
+-    <string>setting</string>
++    <string>设置</string>
+    </property>
+   </action>
+   <action name="actionlevel">
+    <property name="text">
+-    <string>level</string>
++    <string>电平</string>
+    </property>
+   </action>
+   <action name="actionAbout_QtTinySA">
+    <property name="text">
+-    <string>About QtTinySA</string>
++    <string>关于 QtTinySA</string>
+    </property>
+   </action>
+   <action name="actionPresets">
+    <property name="text">
+-    <string>Preset frequencies</string>
++    <string>预设频率</string>
+    </property>
+   </action>
+   <action name="actionSweeps">
+    <property name="text">
+-    <string>Sweeps</string>
++    <string>扫描</string>
+    </property>
+   </action>
+   <action name="actionbands">
+    <property name="text">
+-    <string>Bands and Markers</string>
++    <string>频段与标记</string>
+    </property>
+    <property name="shortcut">
+     <string>Alt+F</string>
+@@ -2365,72 +2365,72 @@
+   </action>
+   <action name="actionBrowse_TinySA">
+    <property name="text">
+-    <string>Browse TinySA</string>
++    <string>浏览 tinySA</string>
+    </property>
+   </action>
+   <action name="actionQuit">
+    <property name="text">
+-    <string>Quit</string>
++    <string>退出</string>
+    </property>
+   </action>
+   <action name="actionTracesMarkers">
+    <property name="text">
+-    <string>TracesMarkers</string>
++    <string>迹线/标记</string>
+    </property>
+   </action>
+   <action name="actionPhaseNoise">
+    <property name="text">
+-    <string>PhaseNoise</string>
++    <string>相位噪声</string>
+    </property>
+   </action>
+   <action name="actionPhNoise">
+    <property name="text">
+-    <string>Phase Noise</string>
++    <string>相位噪声</string>
+    </property>
+   </action>
+   <action name="actionSettings">
+    <property name="text">
+-    <string>Preferences</string>
++    <string>偏好设置</string>
+    </property>
+   </action>
+   <action name="actionFading">
+    <property name="text">
+-    <string>Signal Level Monitor</string>
++    <string>信号电平监视</string>
+    </property>
+   </action>
+   <action name="actionPattern">
+    <property name="text">
+-    <string>Antenna Pattern</string>
++    <string>天线方向图</string>
+    </property>
+   </action>
+   <action name="actionCorrection">
+    <property name="text">
+-    <string>Correction</string>
++    <string>校准</string>
+    </property>
+   </action>
+   <action name="actionLoad_recording">
+    <property name="text">
+-    <string>Recordings</string>
++    <string>录制</string>
+    </property>
+   </action>
+   <action name="actionAbout_Qt">
+    <property name="text">
+-    <string>About Qt</string>
++    <string>关于 Qt</string>
+    </property>
+   </action>
+   <action name="actionBrowse">
+    <property name="text">
+-    <string>Browse</string>
++    <string>浏览</string>
+    </property>
+   </action>
+   <action name="actionRecordings">
+    <property name="text">
+-    <string>Recordings</string>
++    <string>录制</string>
+    </property>
+   </action>
+   <action name="actionQuit_2">
+    <property name="text">
+-    <string>Quit</string>
++    <string>退出</string>
+    </property>
+   </action>
+  </widget>
