@@ -130,6 +130,7 @@ public class MainActivity extends Activity {
         btnAvg.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 traceMode = (traceMode + 1) % 4;
+                savePrefs();
                 resetAcc();
                 String[] nm = { "实时", "平均4", "平均16", "峰值" };
                 btnAvg.setText(nm[traceMode]);
@@ -163,6 +164,47 @@ public class MainActivity extends Activity {
         IntentFilter f = new IntentFilter(ACT);
         f.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
         registerReceiver(rx, f);
+
+        restorePrefs();
+    }
+
+    // ===== 设置持久化: 息屏/重建后恢复, 不回到初始状态 =====
+    android.content.SharedPreferences prefs() {
+        return getSharedPreferences("sa", MODE_PRIVATE);
+    }
+
+    void savePrefs() {
+        android.content.SharedPreferences.Editor e = prefs().edit();
+        e.putInt("unit", iUnit);
+        e.putBoolean("wf", wfOn);
+        e.putInt("trace", traceMode);
+        e.putFloat("ytop", (float) plot.getYTop());
+        e.putFloat("ybot", (float) plot.getYBot());
+        e.putBoolean("want", wantConnected);
+        e.apply();
+    }
+
+    void restorePrefs() {
+        android.content.SharedPreferences p = prefs();
+        iUnit = p.getInt("unit", 0);
+        wfOn = p.getBoolean("wf", false);
+        traceMode = p.getInt("trace", 0);
+        wantConnected = p.getBoolean("want", false);
+        plot.setUnit(iUnit);
+        plot.setWaterfall(wfOn);
+        plot.setYRange(p.getFloat("ytop", 10f), p.getFloat("ybot", -130f));
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        // 息屏后系统可能挂起 USB, 回到前台自动恢复连接
+        if (wantConnected && conn == null) {
+            ui.postDelayed(new Runnable() {
+                public void run() {
+                    if (conn == null && find() != null) connect();
+                }
+            }, 800);
+        }
     }
 
 
@@ -255,6 +297,7 @@ public class MainActivity extends Activity {
     int iRbw = 0, iTime = 2, iAtt = 0, iPts = 3;
     int iUnit = 0;
     boolean wfOn = false;
+    boolean wantConnected = false;   // 用户是否希望保持连接(息屏唤醒后自动重连)
 
     void buildMenuLayer(FrameLayout root) {
         menuLayer = new FrameLayout(this);
@@ -507,6 +550,7 @@ public class MainActivity extends Activity {
                     double bot = Double.parseDouble(ey2.getText().toString().trim());
                     if (top <= bot) { panelMsg("上沿必须大于下沿"); return; }
                     plot.setYRange(top, bot);
+                    savePrefs();
                     panelMsg(String.format(java.util.Locale.US, "纵轴: %.0f ~ %.0f dBm", top, bot));
                 } catch (Exception ex) { panelMsg("纵轴输入无效"); }
             }
@@ -549,6 +593,7 @@ public class MainActivity extends Activity {
                 iUnit = (iUnit + 1) % PlotView.UNITS.length;
                 ((Button) v).setText("单位 " + PlotView.UNITS[iUnit]);
                 plot.setUnit(iUnit);
+                savePrefs();
                 panelMsg("显示单位: " + PlotView.UNITS[iUnit]);
             }
         });
@@ -561,6 +606,7 @@ public class MainActivity extends Activity {
                 wfOn = !wfOn;
                 ((Button) v).setText(wfOn ? "瀑布图: 开" : "瀑布图: 关");
                 plot.setWaterfall(wfOn);
+                savePrefs();
                 panelMsg(wfOn ? "瀑布图已开启" : "瀑布图已关闭");
             }
         });
@@ -844,6 +890,8 @@ public class MainActivity extends Activity {
     }
 
     void connect() {
+        wantConnected = true;
+        savePrefs();
         dev = find();
         if (dev == null) { setStatus("未找到仪器，请检查 OTG 连接"); return; }
         if (um.hasPermission(dev)) { openDev(); return; }
@@ -886,6 +934,8 @@ public class MainActivity extends Activity {
     }
 
     void closeDev() {
+        wantConnected = false;
+        savePrefs();
         running = false;
         quiesce = true;
         final Thread t = worker;

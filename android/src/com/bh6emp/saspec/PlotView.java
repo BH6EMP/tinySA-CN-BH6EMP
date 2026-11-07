@@ -254,8 +254,7 @@ public class PlotView extends View {
         c.drawText(UNITS[unit], lm + pw, tm - 4, pText);
 
         if (ys == null || ys.length < 2) {
-            pText.setTextAlign(Paint.Align.CENTER);
-            c.drawText("等待数据…", w / 2f, h / 2f, pText);
+            // 不画任何提示文字, 避免遮挡图谱; 连接状态由上方状态栏显示
             if (wfOn) drawWaterfall(c, w, h, tm + ph + 20 * sp);
             return;
         }

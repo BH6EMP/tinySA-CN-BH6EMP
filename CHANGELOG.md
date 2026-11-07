@@ -10,6 +10,13 @@
 - 版本号 `tinySA_BH6EMP_V0.1_CH`
 - 版本页底部增加 `Translate:BH6EMP`
 
+## 安卓 App v1.1
+
+- 移除顶部标题栏，频谱图区域增高
+- 息屏再亮屏后自动重连，设置（单位/纵轴/瀑布图/迹线）不再丢失
+- 移除图区中央的"等待数据"文字，避免遮挡图谱
+- versionCode 11 / versionName 1.1
+
 ## 安卓 App v4.4
 
 - 「SA频谱」，包名 `com.bh6emp.saspec`
